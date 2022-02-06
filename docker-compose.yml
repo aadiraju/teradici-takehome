@@ -1,14 +1,15 @@
 version: '3'
 services:
-  web:
+  node:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: node
     ports:
-      - "3000:3000"
+      - "8080:8080"
     volumes:
-      - .:/usr/app
-      - usr/app/node_modules
+      - ./:/app/
+      - /app/node_modules
     depends_on:
       - redis
   redis:

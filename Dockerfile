@@ -1,15 +1,15 @@
 FROM node:16
 
 # Create app directory
-WORKDIR /usr/app
+WORKDIR /app
 
 # copy package.json and package-lock.json into workdir
-COPY package*.json .
+COPY package*.json ./
 
 # Install app dependencies (just express)
 RUN npm install
 
 # Copy app files to workdir
-COPY . .
+COPY . ./
 
 CMD ["npm", "run", "start"]
