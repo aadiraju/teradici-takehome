@@ -8,7 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.17.2"
+    "@octokit/core": "^3.5.1",
+    "express": "^4.17.2",
+    "redis": "^4.0.3"
   },
   "keywords": [],
   "author": "",

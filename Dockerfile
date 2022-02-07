@@ -6,7 +6,7 @@ WORKDIR /app
 # copy package.json and package-lock.json into workdir
 COPY package*.json ./
 
-# Install app dependencies (just express)
+# Install app dependencies
 RUN npm install
 
 # Copy app files to workdir
