@@ -7,6 +7,13 @@ const PORT = process.env.PORT || 8080;
 
 // App
 const app = express();
+
+//Setup Redis
+const redisClient = redis.createClient({
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+});
+
 app.get('/', (req, res) => {
     res.send('Teradici Takehome Challenge by Abhineeth');
 });
