@@ -4,8 +4,8 @@ const {Octokit} = require('@octokit/core');
 
 // Constants
 const PORT = process.env.PORT || 8080;
-const DEFAULT_SINCE = '2019-06-01';
-const DEFAULT_UNTIL = '2020-05-31';
+const DEFAULT_START = '2019-06-01';
+const DEFAULT_END = '2020-05-31';
 const CACHE_TIME = 60 * 2 // 2 minutes
 
 // App
@@ -16,17 +16,17 @@ app.get('/', (req, res) => {
 });
 
 /*
- * Get a list of unique users who have contributed to the repository in the given time range [since, until]
- * @param {string} since - The start date of the time range
- * @param {string} until - The end date of the time range
+ * Get a list of unique users who have contributed to the repository in the given time range [start, end]
+ * @param {string} start - The start date of the time range
+ * @param {string} end - The end date of the time range
  * @returns [{name : String, email : String}] - A list of unique users who have contributed to the repository in the given time range
  */
 app.get('/users', async (req, res) => {
-    const since = req.query.since || DEFAULT_SINCE;
-    const until = req.query.until || DEFAULT_UNTIL;
+    const start = req.query.start || DEFAULT_START;
+    const end = req.query.end || DEFAULT_END;
 
     //check if date range is valid and throw error if not
-    if (!isValidDateRange(since, until)) {
+    if (!isValidDateRange(start, end)) {
         res.status(400).send({message: 'Invalid date range'});
         return;
     }
@@ -41,7 +41,7 @@ app.get('/users', async (req, res) => {
     redisClient.on('error', (err) => console.log('Redis Client Error', err));
     await redisClient.connect();
 
-    redisClient.get(`users:${since}:${until}`).then(async (users) => {
+    redisClient.get(`users:${start}:${end}`).then(async (users) => {
         if (users) {
             //if cache is available, return the data
             res.status(200).send(JSON.parse(users));
@@ -52,11 +52,11 @@ app.get('/users', async (req, res) => {
                 userAgent: 'tradiciTakehome',
             });
             // Get the list of users from the GitHub API
-            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={since}&until={until}', {
+            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={start}&until={end}', {
                 owner: 'teradici',
                 repo: 'deploy',
-                since: since,
-                until: until,
+                since: start,
+                until: end,
             });
 
             // Generate an array with the relevant data retrieved from GitHub
@@ -70,7 +70,7 @@ app.get('/users', async (req, res) => {
             const uniqueUsers = [...new Map(users.map(user => [user.email, user])).values()];
 
             // Store the unique users in the cache
-            await redisClient.setEx(`users:${since}:${until}`, CACHE_TIME, JSON.stringify(uniqueUsers));
+            await redisClient.setEx(`users:${start}:${end}`, CACHE_TIME, JSON.stringify(uniqueUsers));
 
             //Return the users as a JSON object
             res.status(200).send(uniqueUsers);
@@ -82,17 +82,17 @@ app.get('/users', async (req, res) => {
 });
 
 /*
- * Get a list of the top 5 contributors to the repository in the given time range [since, until]
- * @param {string} since - The start date of the time range
- * @param {string} until - The end date of the time range
+ * Get a list of the top 5 contributors to the repository in the given time range [start, end]
+ * @param {string} start - The start date of the time range
+ * @param {string} end - The end date of the time range
  * @returns [{name : String, commits : number}] - A sorted list of the top 5 contributors to the repository in the given time range
  */
 app.get('/most-frequent', async (req, res) => {
-    const since = req.query.since || DEFAULT_SINCE;
-    const until = req.query.until || DEFAULT_UNTIL;
+    const start = req.query.start || DEFAULT_START;
+    const end = req.query.end || DEFAULT_END;
 
     //check if date range is valid and throw error if not
-    if (!isValidDateRange(since, until)) {
+    if (!isValidDateRange(start, end)) {
         res.status(400).send({message: 'Invalid date range'});
         return;
     }
@@ -107,7 +107,7 @@ app.get('/most-frequent', async (req, res) => {
     redisClient.on('error', (err) => console.log('Redis Client Error', err));
     await redisClient.connect();
 
-    redisClient.get(`most-frequent:${since}:${until}`).then(async (mostFrequentUsers) => {
+    redisClient.get(`most-frequent:${start}:${end}`).then(async (mostFrequentUsers) => {
         if (mostFrequentUsers) {
             //if cache is available, return the data
             res.status(200).send(JSON.parse(mostFrequentUsers));
@@ -118,11 +118,11 @@ app.get('/most-frequent', async (req, res) => {
                 userAgent: 'tradiciTakehome',
             });
             // Get the list of users from the GitHub API
-            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={since}&until={until}', {
+            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={start}&until={end}', {
                 owner: 'teradici',
                 repo: 'deploy',
-                since: since,
-                until: until,
+                since: start,
+                until: end,
             });
 
             // Generate an array with the relevant data retrieved from GitHub
@@ -148,7 +148,7 @@ app.get('/most-frequent', async (req, res) => {
             mostFrequentUsers.sort((a, b) => b.commits - a.commits).slice(0, 5);
 
             // Store the unique users in the cache
-            await redisClient.setEx(`most-frequent:${since}:${until}`, CACHE_TIME, JSON.stringify(mostFrequentUsers));
+            await redisClient.setEx(`most-frequent:${start}:${end}`, CACHE_TIME, JSON.stringify(mostFrequentUsers));
 
             //Return the users as a JSON object
             res.status(200).send(mostFrequentUsers);
@@ -167,9 +167,9 @@ app.listen(PORT, () => {
 //Helper Functions
 
 //Check if the date range given is valid
-function isValidDateRange(since, until) {
-    const sinceTime = new Date(since);
-    const untilTime = new Date(until);
+function isValidDateRange(start, end) {
+    const startTime = new Date(start);
+    const endTime = new Date(end);
     // if either one is invalid, then value becomes NaN, and NaN compared to anything returns false
-    return sinceTime < untilTime;
+    return startTime < endTime;
 }
