@@ -1,6 +1,7 @@
 const express = require('express');
 const redis = require('redis');
-const {Octokit} = require('@octokit/core');
+const axios = require('axios');
+axios.defaults.adapter('axios/lib/adapters/http');
 
 // Constants
 const PORT = process.env.PORT || 8080;
@@ -9,10 +10,10 @@ const DEFAULT_END = '2020-05-31';
 const CACHE_TIME = 60 * 2 // 2 minutes
 
 // App
-const app = express();
+const server = express();
 
-app.get('/', (req, res) => {
-    res.status(500).send('Teradici Takehome Challenge by Abhineeth');
+server.get('/', (req, res) => {
+    res.status(200).send('Teradici Takehome Challenge by Abhineeth');
 });
 
 /*
@@ -21,7 +22,7 @@ app.get('/', (req, res) => {
  * @param {string} end - The end date of the time range
  * @returns [{name : String, email : String}] - A list of unique users who have contributed to the repository in the given time range
  */
-app.get('/users', async (req, res) => {
+server.get('/users', async (req, res) => {
     const start = req.query.start || DEFAULT_START;
     const end = req.query.end || DEFAULT_END;
 
@@ -47,17 +48,8 @@ app.get('/users', async (req, res) => {
             res.status(200).send(JSON.parse(users));
         } else {
             // if cache is not available, fetch from GitHub and store in cache
-            // Set up Octokit instance with the right credentials
-            const octokit = new Octokit({
-                userAgent: 'tradiciTakehome',
-            });
             // Get the list of users from the GitHub API
-            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={start}&until={end}', {
-                owner: 'teradici',
-                repo: 'deploy',
-                since: start,
-                until: end,
-            });
+            const {data} = await axios.get(`https://api.github.com/repos/teradici/deploy/commits?since=${start}&until=${end}`);
 
             // Generate an array with the relevant data retrieved from GitHub
             const users = data.map(({commit}) => {
@@ -87,7 +79,7 @@ app.get('/users', async (req, res) => {
  * @param {string} end - The end date of the time range
  * @returns [{name : String, commits : number}] - A sorted list of the top 5 contributors to the repository in the given time range
  */
-app.get('/most-frequent', async (req, res) => {
+server.get('/most-frequent', async (req, res) => {
     const start = req.query.start || DEFAULT_START;
     const end = req.query.end || DEFAULT_END;
 
@@ -113,17 +105,7 @@ app.get('/most-frequent', async (req, res) => {
             res.status(200).send(JSON.parse(mostFrequentUsers));
         } else {
             // if cache is not available, fetch from GitHub and store in cache
-            // Set up Octokit instance with the right credentials
-            const octokit = new Octokit({
-                userAgent: 'tradiciTakehome',
-            });
-            // Get the list of users from the GitHub API
-            const {data} = await octokit.request('GET /repos/{owner}/{repo}/commits?since={start}&until={end}', {
-                owner: 'teradici',
-                repo: 'deploy',
-                since: start,
-                until: end,
-            });
+            const {data} = await axios.get(`https://api.github.com/repos/teradici/deploy/commits?since=${start}&until=${end}`);
 
             // Generate an array with the relevant data retrieved from GitHub
             const userCommitCounts = new Map();
@@ -160,7 +142,7 @@ app.get('/most-frequent', async (req, res) => {
 });
 
 //Start the server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
@@ -173,3 +155,5 @@ function isValidDateRange(start, end) {
     // if either one is invalid, then value becomes NaN, and NaN compared to anything returns false
     return startTime < endTime;
 }
+
+module.exports = server;
